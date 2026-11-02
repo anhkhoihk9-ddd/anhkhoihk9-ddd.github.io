@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mental Math">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Mental Math</title>
+<style>
+  :root {
+    --paper: #f6f3ec;
+    --card: #fffdf8;
+    --ink: #1c1f1d;
+    --muted: #686c65;
+    --line: #d9d4c7;
+    --accent: #1f5c46;
+    --on-accent: #ffffff;
+    --bad: #a8392e;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #141614;
+      --card: #1c1f1c;
+      --ink: #ecebe4;
+      --muted: #a0a29a;
+      --line: #333733;
+      --accent: #6fc3a2;
+      --on-accent: #0f1a15;
+      --bad: #e58a7d;
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-tap-highlight-color: transparent;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .app {
+    width: 100%;
+    max-width: 580px;
+    min-height: 100vh;
+    min-height: 100dvh;
+    margin: 0 auto;
+    padding: max(14px, env(safe-area-inset-top)) 16px max(14px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .no-script {
+    padding: 12px;
+    border: 1px solid var(--bad);
+    border-radius: 8px;
+    color: var(--bad);
+    line-height: 1.4;
+  }
+
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
+  .stats { display: flex; gap: 16px; font-size: 0.72rem; color: var(--muted); }
+  .stats div { text-align: right; }
+  .stats b {
+    display: block;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .chip {
+    min-height: 44px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 1.1rem;
+  }
+  .chip[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+    padding: 20px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .tag {
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .question {
+    font-family: var(--mono);
+    font-size: clamp(1.75rem, 9.5vw, 3.25rem);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+  .question.long {
+    font-family: var(--sans);
+    font-size: clamp(1.15rem, 4.8vw, 1.5rem);
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0;
+  }
+
+  .answer {
+    display: flex;
+    align-items: center;
+    min-height: 58px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--ink);
+    font-family: var(--mono);
+    font-size: clamp(1.6rem, 8vw, 2.5rem);
+    font-weight: 600;
+  }
+  .answer.ok { border-color: var(--accent); color: var(--accent); }
+  .answer.miss { border-color: var(--bad); color: var(--bad); }
+  .caret {
+    width: 3px;
+    height: 1em;
+    margin-left: 3px;
+    background: var(--accent);
+    animation: blink 1.1s steps(2) infinite;
+  }
+  .answer.ok .caret, .answer.miss .caret { display: none; }
+  .answer.shake { animation: shake 0.25s; }
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes shake {
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+
+  .feedback { min-height: 4.4em; font-size: 0.95rem; line-height: 1.45; color: var(--muted); }
+  .feedback strong { display: block; margin-bottom: 2px; font-size: 1.02rem; }
+  .feedback.ok strong { color: var(--accent); }
+  .feedback.miss strong { color: var(--bad); }
+
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; user-select: none; -webkit-user-select: none; }
+  .keypad button {
+    height: clamp(46px, 7.2vh, 60px);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    font-family: var(--mono);
+    font-size: 1.4rem;
+    font-weight: 600;
+  }
+  .keypad button:active { background: var(--line); }
+
+  .actions { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+  .actions button {
+    min-height: 52px;
+    border-radius: 8px;
+    font-weight: 700;
+  }
+  #reveal { border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 0.9rem; }
+  #reveal:disabled { opacity: 0.45; cursor: default; }
+  #primary { border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); font-size: 1.05rem; }
+
+  .hint { display: none; text-align: center; color: var(--muted); font-size: 0.8rem; }
+  kbd {
+    padding: 1px 5px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+  }
+
+  /* Devices with a mouse and keyboard: hide the keypad and give the question more room */
+  @media (hover: hover) and (pointer: fine) {
+    .keypad { display: none; }
+    .hint { display: block; }
+    .app { justify-content: center; }
+    .card { flex: 0 1 auto; min-height: 400px; padding: 32px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .caret, .answer.shake { animation: none; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <noscript>
+    <p class="no-script">This game can't run in this viewer. Open it from a website link in Safari or Chrome.</p>
+  </noscript>
+
+  <header>
+    <h1>Mental Math</h1>
+    <div class="stats">
+      <div><b id="score">0/0</b>Score</div>
+      <div><b id="streak">0</b>Streak</div>
+      <div><b id="best">0</b>Best</div>
+    </div>
+  </header>
+
+  <div class="chips" role="group" aria-label="Question types">
+    <button class="chip" data-cat="add" aria-pressed="true" aria-label="Addition and subtraction">+ −</button>
+    <button class="chip" data-cat="mul" aria-pressed="true" aria-label="Multiplication">×</button>
+    <button class="chip" data-cat="div" aria-pressed="true" aria-label="Division">÷</button>
+    <button class="chip" data-cat="pct" aria-pressed="true" aria-label="Percentages">%</button>
+  </div>
+
+  <section class="card">
+    <p class="tag" id="tag"></p>
+    <p class="question" id="question" aria-live="polite"></p>
+    <div class="answer" id="answer" aria-label="Your answer">
+      <span id="pre"></span><span id="entry"></span><span class="caret"></span><span id="post"></span>
+    </div>
+    <div class="feedback" id="feedback" aria-live="polite"></div>
+  </section>
+
+  <div class="keypad" id="keypad">
+    <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button>
+    <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button>
+    <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button>
+    <button data-key=".">.</button><button data-key="0">0</button><button data-key="del" aria-label="Delete">⌫</button>
+  </div>
+
+  <div class="actions">
+    <button id="reveal">Show answer</button>
+    <button id="primary">Check</button>
+  </div>
+
+  <p class="hint">Correct answers check automatically · <kbd>Enter</kbd> to check or continue · <kbd>S</kbd> to show answer</p>
+</main>
+
+<script>
+  /* ---------- Helpers ---------- */
+  const $ = id => document.getElementById(id);
+  const fmt = n => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  const rand = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+  const pick = list => list[rand(0, list.length - 1)];
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  const multipleOf = (step, lo, hi) => step * rand(Math.ceil(lo / step), Math.floor(hi / step));
+  const cleanPct = (base, list) => pick(list.filter(p => (base * p) % 100 === 0));
+  const TENS = [20, 30, 40, 50, 60, 70, 80, 90];
+
+  /* ---------- Addition and subtraction ---------- */
+  function addSub() {
+    const plus = Math.random() < 0.5;
+    const op = plus ? '+' : '−';
+    const size = digits => {
+      if (digits === 2) return rand(12, 99);
+      if (digits === 3) return multipleOf(pick([5, 10, 25]), 100, 995);
+      return multipleOf(pick([10, 25, 50, 100]), 1000, 9900);
+    };
+    const [d1, d2] = pick([[2, 2], [3, 2], [3, 3], [4, 3], [4, 4]]);
+    let a = size(d1), b = size(d2);
+    if (a < b) [a, b] = [b, a];
+    if (!plus && a === b) return addSub();
+
+    const answer = plus ? a + b : a - b;
+    const unit = b >= 100 ? 100 : 10;
+    let round = Math.round(b / unit) * unit;
+    if (!plus && round > a) round -= unit;
+    const gap = round - b;
+
+    let tip;
+    if (gap === 0) {
+      tip = `${fmt(b)} is already round, so work in ${unit === 100 ? 'hundreds' : 'tens'}.`;
+    } else {
+      const middle = plus ? a + round : a - round;
+      const sign = plus === (gap > 0) ? '−' : '+';
+      tip = `Round ${fmt(b)} to ${fmt(round)}: ${fmt(a)} ${op} ${fmt(round)} = ${fmt(middle)}, then ${sign} ${fmt(Math.abs(gap))} = ${fmt(answer)}.`;
+    }
+    return { text: `${fmt(a)} ${op} ${fmt(b)}`, answer, tip };
+  }
+
+  /* ---------- Multiplication ---------- */
+  const mulTypes = [
+    () => { const x = 4 * rand(3, 24);
+      return { x, y: 25, tip: `${x} ÷ 4 = ${x / 4}, then × 100 = ${fmt(x * 25)}.` }; },
+    () => { const x = rand(12, 98);
+      return { x, y: 50, tip: `Half of ${x} is ${fmt(x / 2)}, then × 100 = ${fmt(x * 50)}.` }; },
+    () => { const x = rand(12, 98);
+      return { x, y: 11, tip: `${x} × 10 = ${x * 10}, then + ${x} = ${fmt(x * 11)}.` }; },
+    () => { const x = 2 * rand(6, 49);
+      return { x, y: 15, tip: `${x} × 10 = ${x * 10}, half of that is ${x * 5}, total ${fmt(x * 15)}.` }; },
+    () => { const x = rand(12, 49);
+      return { x, y: 99, tip: `${x} × 100 = ${fmt(x * 100)}, then − ${x} = ${fmt(x * 99)}.` }; },
+    () => { const m = pick(TENS), d = rand(1, 5);
+      return { x: m - d, y: m + d, tip: `This is (${m} − ${d})(${m} + ${d}) = ${m}² − ${d}² = ${fmt(m * m)} − ${d * d} = ${fmt(m * m - d * d)}.` }; },
+    () => { const n = pick([15, 25, 35, 45, 55, 65, 75, 85, 95]), t = (n - 5) / 10;
+      return { x: n, y: n, tip: `${t} × ${t + 1} = ${t * (t + 1)}, then write 25 after it: ${fmt(n * n)}.` }; },
+    () => { const m = pick(TENS), s = pick([-1, 1]), y = rand(12, 25), x = m + s;
+      return { x, y, tip: `${m} × ${y} = ${fmt(m * y)}, then ${s > 0 ? '+' : '−'} ${y} = ${fmt(x * y)}.` }; },
+    () => { const m = pick(TENS), y = rand(12, 99);
+      return { x: m, y, tip: `${m / 10} × ${y} = ${m / 10 * y}, then add a zero: ${fmt(m * y)}.` }; },
+    () => { const x = rand(12, 40), y = rand(13, 19);
+      return { x, y, tip: `${x} × 10 = ${x * 10}, ${x} × ${y - 10} = ${x * (y - 10)}, total ${fmt(x * y)}.` }; }
+  ];
+
+  function multiply() {
+    const { x, y, tip } = pick(mulTypes)();
+    const [a, b] = Math.random() < 0.5 ? [x, y] : [y, x];
+    return { text: `${a} × ${b}`, answer: x * y, tip };
+  }
+
+  /* ---------- Division (always a whole-number answer) ---------- */
+  const divTypes = [
+    () => { const A = multipleOf(5, 100, 9995), q = A / 5;
+      return { A, d: 5, q, tip: `Double it: ${fmt(A * 2)}, then ÷ 10 = ${fmt(q)}.` }; },
+    () => { const q = rand(8, 160), A = 25 * q;
+      return { A, d: 25, q, tip: `× 4 = ${fmt(A * 4)}, then ÷ 100 = ${fmt(q)}.` }; },
+    () => { const q = rand(6, 190), A = 50 * q;
+      return { A, d: 50, q, tip: `Double it: ${fmt(A * 2)}, then ÷ 100 = ${fmt(q)}.` }; },
+    () => { const q = rand(4, 40), A = 125 * q;
+      return { A, d: 125, q, tip: `× 8 = ${fmt(A * 8)}, then ÷ 1,000 = ${fmt(q)}.` }; },
+    () => {
+      const d = pick([12, 16, 18, 24, 32, 36, 48, 64, 72]);
+      const q = multipleOf(5, 10, Math.min(200, Math.floor(9999 / d)));
+      const A = d * q, steps = [];
+      let a = A, b = d;
+      while (b > 9 && b % 2 === 0 && a % 2 === 0) {
+        a /= 2; b /= 2;
+        steps.push(`${fmt(a)} ÷ ${b}`);
+      }
+      return { A, d, q, tip: `Halve both: ${steps.join(' → ')} = ${fmt(q)}.` };
+    },
+    () => {
+      const d = pick([15, 35, 45, 75]), scale = d === 75 ? 4 : 2;
+      const q = multipleOf(5, 10, Math.min(200, Math.floor(9999 / d)));
+      const A = d * q;
+      return { A, d, q, tip: `Multiply both by ${scale}: ${fmt(A * scale)} ÷ ${d * scale} = ${fmt(q)}.` };
+    },
+    () => {
+      const d = rand(3, 9);
+      const q = multipleOf(pick([5, 10, 50, 100]), 20, Math.min(1000, Math.floor(9999 / d)));
+      const A = d * q, rest = q % 100, hundreds = q - rest, ones = q % 10, tens = q - ones;
+      let tip;
+      if (hundreds && rest) tip = `Split ${fmt(A)} into ${fmt(d * hundreds)} + ${fmt(d * rest)}: ${fmt(hundreds)} + ${rest} = ${fmt(q)}.`;
+      else if (!rest) tip = `${fmt(A / 100)} ÷ ${d} = ${fmt(q / 100)}, then add two zeros.`;
+      else if (ones) tip = `${d} × ${tens} = ${d * tens}, and the remaining ${d * ones} is ${d} × ${ones}.`;
+      else tip = `${fmt(A / 10)} ÷ ${d} = ${q / 10}, then add a zero.`;
+      return { A, d, q, tip };
+    }
+  ];
+
+  function divide() {
+    const { A, d, q, tip } = pick(divTypes)();
+    return { text: `${fmt(A)} ÷ ${d}`, answer: q, tip };
+  }
+
+  /* ---------- Percentages ---------- */
+  function percentTip(p, b) {
+    const r = fmt(b * p / 100), ten = fmt(b / 10);
+    if (p === 50) return `Half of ${fmt(b)} is ${r}.`;
+    if (p === 25) return `A quarter: ${fmt(b)} ÷ 4 = ${r}.`;
+    if (p === 75) return `${fmt(b)} ÷ 4 = ${fmt(b / 4)}, then × 3 = ${r}.`;
+    if (p === 12.5) return `12.5% is 1/8: ${fmt(b)} ÷ 8 = ${r}.`;
+    if (p === 5) return `10% is ${ten}, and half of that is ${r}.`;
+    if (p === 15) return `10% is ${ten}, 5% is ${fmt(b / 20)}, total ${r}.`;
+    if (p === 10) return `Move the decimal one place: ${r}.`;
+    return `10% is ${ten}, then × ${p / 10} = ${r}.`;
+  }
+
+  const pctTypes = [
+    () => {
+      const p = pick([5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 12.5]);
+      const b = p === 12.5 ? multipleOf(80, 80, 800) : multipleOf(20, 60, 1000);
+      return { text: `${p}% of ${fmt(b)}`, answer: b * p / 100, tip: percentTip(p, b) };
+    },
+    () => {
+      const p = pick([5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 80]);
+      const b = multipleOf(20, 60, 1000);
+      return { text: `${p}% of ${fmt(b)}`, answer: b * p / 100, tip: percentTip(p, b) };
+    },
+    () => {
+      const b = multipleOf(20, 40, 400), p = pick([10, 15, 20, 25, 30, 40, 50]);
+      const off = b * p / 100;
+      return { text: `A $${fmt(b)} jacket is ${p}% off. What is the sale price?`, long: true, pre: '$',
+        answer: b - off, tip: `${p}% of $${fmt(b)} is $${fmt(off)}, so $${fmt(b)} − $${fmt(off)} = $${fmt(b - off)}.` };
+    },
+    () => {
+      const b = multipleOf(20, 40, 200), p = pick([10, 15, 20]);
+      const extra = b * p / 100;
+      return { text: `Dinner costs $${b}. With a ${p}% tip, what is the total?`, long: true, pre: '$',
+        answer: b + extra, tip: `${p}% of $${b} is $${fmt(extra)}, so the total is $${fmt(b + extra)}.` };
+    },
+    () => {
+      const from = pick([200, 250, 300, 400, 500, 600, 800, 1000, 1200, 1500, 2000]);
+      const g = cleanPct(from, [5, 10, 15, 20, 25, 30, 40, 50]);
+      const change = from * g / 100;
+      return { text: `Revenue grows from ${fmt(from)} to ${fmt(from + change)}. What is the growth rate?`, long: true, post: '%',
+        answer: g, tip: `The change is ${fmt(change)}. ${fmt(change)} ÷ ${fmt(from)} = ${g}%.` };
+    },
+    () => {
+      const from = pick([200, 250, 300, 400, 500, 600, 800, 1000]);
+      const g = cleanPct(from, [5, 10, 20, 25, 30, 40, 50]);
+      const change = from * g / 100;
+      return { text: `A stock falls from $${fmt(from)} to $${fmt(from - change)}. What is the percentage drop?`, long: true, post: '%',
+        answer: g, tip: `The drop is $${fmt(change)}. ${fmt(change)} ÷ ${fmt(from)} = ${g}%.` };
+    },
+    () => {
+      const whole = pick([80, 120, 160, 200, 240, 300, 400, 500, 800, 1000, 1200]);
+      const p = cleanPct(whole, [5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 80]);
+      const part = whole * p / 100, g = gcd(part, whole);
+      return { text: `${fmt(part)} is what percent of ${fmt(whole)}?`, long: true, post: '%',
+        answer: p, tip: `Simplify the fraction: ${fmt(part)}/${fmt(whole)} = ${part / g}/${whole / g} = ${p}%.` };
+    },
+    () => {
+      const [n, d] = pick([[1, 8], [3, 8], [5, 8], [7, 8], [3, 4], [2, 5], [3, 5], [4, 5], [3, 20], [7, 20], [9, 20], [3, 25], [7, 25]]);
+      const unit = 100 / d, p = unit * n;
+      return { text: `Write ${n}/${d} as a percentage.`, long: true, post: '%',
+        answer: p, tip: `1/${d} = ${fmt(unit)}%, then × ${n} = ${fmt(p)}%.` };
+    },
+    () => {
+      const g = pick([10, 20, 25, 50]), before = multipleOf(20, 100, 1000);
+      const after = before * (100 + g) / 100;
+      return { text: `After ${g}% growth, sales are ${fmt(after)}. What were they before?`, long: true,
+        answer: before, tip: `Divide by ${fmt((100 + g) / 100)}: ${fmt(after)} ÷ ${fmt((100 + g) / 100)} = ${fmt(before)}.` };
+    },
+    () => {
+      const rev = pick([200, 300, 400, 500, 800, 1000, 1200, 2000]);
+      const m = cleanPct(rev, [10, 15, 20, 25, 30, 40]);
+      const profit = rev * m / 100;
+      return { text: `Revenue is ${fmt(rev)} and costs are ${fmt(rev - profit)}. What is the profit margin?`, long: true, post: '%',
+        answer: m, tip: `Profit is ${fmt(profit)}. ${fmt(profit)} ÷ ${fmt(rev)} = ${m}%.` };
+    }
+  ];
+
+  const generators = { add: addSub, mul: multiply, div: divide, pct: () => pick(pctTypes)() };
+  const labels = { add: 'Add & subtract', mul: 'Multiply', div: 'Divide', pct: 'Percent' };
+
+  /* ---------- Game state ---------- */
+  const state = {
+    cats: new Set(['add', 'mul', 'div', 'pct']),
+    q: null, entry: '', done: false,
+    right: 0, total: 0, streak: 0, best: 0
+  };
+
+  function nextQuestion() {
+    const lastText = state.q ? state.q.text : '';
+    let q, cat;
+    do {
+      cat = pick([...state.cats]);
+      q = generators[cat]();
+    } while (q.text === lastText);
+    q.cat = cat;
+
+    state.q = q;
+    state.entry = '';
+    state.done = false;
+
+    $('tag').textContent = labels[cat];
+    $('question').textContent = q.text;
+    $('question').classList.toggle('long', !!q.long);
+    $('pre').textContent = q.pre || '';
+    $('post').textContent = q.post || '';
+    $('answer').className = 'answer';
+    $('feedback').className = 'feedback';
+    $('feedback').textContent = '';
+    $('primary').textContent = 'Check';
+    $('reveal').disabled = false;
+    showEntry();
+  }
+
+  function showEntry() {
+    const [whole, decimal] = state.entry.split('.');
+    let text = whole ? Number(whole).toLocaleString('en-US') : (state.entry ? '0' : '');
+    if (state.entry.includes('.')) text += '.' + (decimal || '');
+    $('entry').textContent = text;
+  }
+
+  const isCorrect = () => Math.abs(parseFloat(state.entry) - state.q.answer) < 1e-9;
+
+  function press(key) {
+    if (state.done) return;
+    if (key === 'del') state.entry = state.entry.slice(0, -1);
+    else if (key === '.' && state.entry.includes('.')) return;
+    else if (state.entry.length < 8) state.entry += key;
+    showEntry();
+
+    /* Auto-check: finish as soon as the typed answer is correct */
+    if (state.entry && isCorrect()) finish(true, false);
+  }
+
+  function finish(correct, revealed) {
+    const q = state.q;
+    state.done = true;
+    state.total++;
+    if (correct) {
+      state.right++;
+      state.streak++;
+      state.best = Math.max(state.best, state.streak);
+    } else {
+      state.streak = 0;
+    }
+
+    const shown = `${q.pre || ''}${fmt(q.answer)}${q.post || ''}`;
+    const title = document.createElement('strong');
+    title.textContent = correct ? 'Correct' : (revealed ? `Answer: ${shown}` : `Not quite. Answer: ${shown}`);
+    const tip = document.createElement('span');
+    tip.textContent = q.tip;
+
+    $('feedback').replaceChildren(title, tip);
+    $('feedback').className = 'feedback ' + (correct ? 'ok' : 'miss');
+    $('answer').className = 'answer ' + (correct ? 'ok' : 'miss');
+    $('primary').textContent = 'Next';
+    $('reveal').disabled = true;
+    $('score').textContent = `${state.right}/${state.total}`;
+    $('streak').textContent = state.streak;
+    $('best').textContent = state.best;
+  }
+
+  function check() {
+    if (!state.entry || state.entry === '.') {
+      const line = $('answer');
+      line.classList.remove('shake');
+      void line.offsetWidth;
+      line.classList.add('shake');
+      return;
+    }
+    finish(isCorrect(), false);
+  }
+
+  const primaryAction = () => (state.done ? nextQuestion() : check());
+  const revealAction = () => { if (!state.done) finish(false, true); };
+
+  /* ---------- Controls ---------- */
+  $('primary').addEventListener('click', primaryAction);
+  $('reveal').addEventListener('click', revealAction);
+
+  $('keypad').addEventListener('click', e => {
+    const button = e.target.closest('button');
+    if (button) press(button.dataset.key);
+  });
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const cat = chip.dataset.cat;
+      if (state.cats.has(cat)) {
+        if (state.cats.size === 1) return; // keep at least one type on
+        state.cats.delete(cat);
+        chip.setAttribute('aria-pressed', 'false');
+        if (state.q.cat === cat && !state.done) nextQuestion();
+      } else {
+        state.cats.add(cat);
+        chip.setAttribute('aria-pressed', 'true');
+      }
+    });
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/^[0-9.]$/.test(e.key)) press(e.key);
+    else if (e.key === 'Backspace') { e.preventDefault(); press('del'); }
+    else if (e.key === 'Enter') { e.preventDefault(); primaryAction(); }
+    else if (e.key.toLowerCase() === 's') revealAction();
+  });
+
+  nextQuestion();
+</script>
+</body>
+</html>
